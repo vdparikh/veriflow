@@ -1,0 +1,345 @@
+{{template "header" .}}
+
+<style>
+    .flow-container {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        width: 400px;
+        margin: auto;
+    }
+
+    .flow-step {
+        text-align: center;
+        font-weight: bold;
+        font-size: 0.8em;
+        background-color: transparent;
+        text-transform: uppercase;
+        width: 100px;
+        height: 80px;
+        text-align: center;
+        padding-top: 45px;
+        position: relative;
+    }
+
+    .flow-step::before {
+        content: '';
+        position: absolute;
+        top: 15px;
+        left: 40px;
+        width: 20px;
+        height: 20px;
+        border-radius: 100%;
+        background: #ddd;
+        border: 6px solid #f6f8fc;
+        z-index: 0;
+    }
+
+    .flow-step::after {
+        content: '';
+        position: absolute;
+        top: 10%;
+        left: -50%;
+        right: 0;
+        margin-top: 16px;
+        height: 4px;
+        background: #ddd;
+        z-index: -1;
+
+    }
+
+    .flow-step.text-success::after {
+        background: #72C240;
+    }
+
+    .flow-step.text-danger::after {
+        background: #E13C39;
+    }
+
+    .flow-step.text-success::before {
+        background: #72C240;
+    }
+
+    .flow-step.text-danger::before {
+        background: #E13C39;
+    }
+
+    .flow-step:last-child::after {
+        display: block;
+        right: 50%;
+    }
+
+    .flow-step:first-child::after {
+        left: 50%;
+        display: none;
+    }
+
+    .flow-step i {
+        display: block;
+        width: 30px;
+        height: 30px;
+        font-size: 30px !important;
+        position: absolute;
+        left: 35px;
+        top: -30px;
+        z-index: 1;
+        margin: auto auto;
+        color: #ddd;
+
+    }
+
+    .flow-step p {
+        color: #000 !important;
+    }
+
+    .flow-step.text-success i {
+        color: #72C240 !important;
+    }
+
+    .flow-step.text-danger i,
+    .flow-step.text-danger p {
+        color: #E13C39 !important;
+    }
+</style>
+<div class=" d-flex align-items-center justify-content-center min-vh-100">
+
+
+    <div class="container ">
+
+        <div class="mt-3">
+            <div class="">
+                <div id="flowStatus" data-status="{{.Request.Status}}"></div>
+                <div id="flowDiagram" class="text-center">
+                    <div class="flow-container">
+                        <div id="initiatedStep" class="text-center flow-step ">
+                            <div><i class="bi bi-envelope-fill "></i></div>
+                            <p>Initiated</p>
+                            <small class="text-muted">{{.Request.Start.Format "01/02 15:04 PM"}}</small>
+                        </div>
+                        <div id="sentStep" class="flow-step">
+                            <i class="bi bi-send-arrow-up-fill" style="font-size: 2rem;"></i>
+                            <p>Sent</p>
+                        </div>
+                        <div id="verifiedStep" class="flow-step">
+                            {{ if .Request.Error }}
+                            <i class="bi bi-exclamation-triangle-fill" style="font-size: 2rem;"></i>
+                            <p>Failed</p>
+                            {{ else }}
+                            <i class="bi bi-check-circle-fill" style="font-size: 2rem;"></i>
+                            <p>Verified</p>
+                            {{ end }}
+
+                            {{ if .Request.Error }}
+                            <small class="text-muted">{{.Request.End.Format "01/02 15:04 PM"}}</small>
+                            {{ end }}
+                        </div>
+
+                        <div id="completedStep" class="flow-step">
+                            <i class="bi bi-flag-fill" style="font-size: 2rem;"></i>
+                            <p>Completed</p>
+                            <small class="text-muted">
+                                {{ if not .Request.Error }}
+                                {{ if not .Request.End.IsZero }}
+                                {{ .Request.End.Format "01/02 15:04 PM" }}
+                                {{ end }}
+                                {{ end }}
+                            </small>
+                        </div>
+                    </div>
+
+                </div>
+
+
+
+            </div>
+        </div>
+
+        <div class="row justify-content-md-center mt-3">
+
+
+            <div class="col-md-10 col-sm-12 col-lg-9 col-xl-9">
+                <div class="row align-items-center justify-content-center h-100">
+                    <div class="col-md-10 col-lg-10">
+                        <div class="text-center mb-3 mt-3">
+                            <span
+                                class="bg-primary bg-opacity-25 shadow-sm d-inline-block text-dark rounded-5 p-1 ps-3 pe-3"
+                                style="width: 100%">
+                                {{ if .Request.Duration }}
+                                <b>Total Duration {{ .Request.Duration }}</b>
+                                {{ else }}
+                                <b>Initiated {{ .Request.DurationSinceStart }} ago<br /></b>
+                                {{ end }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-10 col-lg-5 h-100">
+                      
+                        <div class="bg-white   rounded-3 shadow-sm p-5 h-100">
+                            Requestor
+                            <h4 class="participant-name mb-0">{{.Request.Requestor.Name}} ({{ .Request.Requestor.ID }})
+                            </h4>
+
+                            <small>{{.Request.Start.Format "2006-01-02 15:04 PM"}}</small>
+
+                            <div class="mb-3 mt-3 d-flex">
+                                <img class="img-thumnnail mb-2 w-25 h-25 rounded-2 me-3"
+                                    src="{{.Request.Requestor.Image}}" alt="Requestor Image">
+                                <div>
+
+
+
+                                    <small>
+                                        <div
+                                            class="h-100 rounded-0 border-0  border-start border-3 border-secondary p-0  ps-3">
+                                            <span class="badge bg-secondary mb-1">REQUEST</span><br />
+                                            {{.Request.Message}}
+                                        </div>
+                                </div>
+
+                                </small>
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-10   col-lg-5 h-100">
+                        <div class="bg-white  rounded-3 shadow-sm p-5 h-100">
+                            Recipient
+                            <h4 class="participant-name mb-0">{{.Request.Recipient.Name}} ({{ .Request.Recipient.ID }})
+                            </h4>
+
+                            <small>
+
+                                {{ if not .Request.End.IsZero }}
+                                {{ .Request.End.Format "2006-01-02 15:04 PM" }}
+                                {{ else }}
+                                <!-- Not Verified -->
+                                {{ end }}
+
+                            </small>
+                            <div class="mb-3 mt-3 d-flex">
+                                <img class="w-25  h-25 img-thumnnail mb-2 rounded-2 me-3"
+                                    src="{{.Request.Recipient.Image}}" alt="Recipient Image">
+                                <div>
+                                    <small>
+                                        {{ if eq .Request.Status "SENT" }}
+                                        <div
+                                            class="h-100 rounded-0 border-0  border-start border-3 border-secondary p-0  ps-3">
+                                            <span class="badge bg-secondary mb-1">{{.Request.Status}}</span><br />
+                                            <div class="text text-secondary">Verification in Progress</div>
+                                        </div>
+                                        {{ else }}
+                                        <div>
+                                            {{if .Request.Error}}
+                                            <div>
+                                                <div
+                                                    class="h-100 alert rounded-0 border-0  border-start border-3 border-danger p-0  ps-3 ">
+                                                    <span class="badge bg-danger mb-1">{{.Request.Status}}</span><br />
+                                                    {{.Request.Error}}
+                                                </div>
+                                                <!-- <br /><small>Depending on the failure type, the request was notified to the security team.</small> -->
+                                            </div>
+                                            {{else}}
+                                            <div class="">
+
+                                                <div
+                                                    class="h-100 rounded-0 border-0  border-start border-3 border-success p-0  ps-3">
+                                                    <span class="badge bg-success mb-1">{{.Request.Status}}</span><br />
+                                                    Verification initiated by {{.Request.Requestor.Name}} at
+                                                    {{.Request.Start.Format "2006-01-02 15:04 PM"}} was successfully
+                                                    completed
+                                                    by
+                                                    {{.Request.Recipient.Name}} at
+                                                    {{.Request.End.Format "2006-01-02 15:04 PM"}}.
+                                                </div>
+
+                                            </div>
+                                            {{end}}
+                                        </div>
+                                        {{ end }}
+                                    </small>
+                                </div>
+
+
+                            </div>
+
+
+                            {{ if and (eq .Request.Status "SENT") (eq .User.Email .Request.Recipient.Email) }}
+                            <div class="vstack gap-2 mt-1 text-center">
+                                <div class="">
+                                    <a class="btn w-100 btn-success btn-sm" href="/requests/{{.Request.ID}}/approve"><i
+                                            class=" bi bi-shield-fill-check"></i> Approve Request</a>
+                                </div>
+                                <div class="">
+                                    <a class="btn w-100 btn-outline-danger btn-sm"
+                                        href="/requests/{{.Request.ID}}/report"><i
+                                            class=" bi bi-exclamation-circle-fill"></i> Report Request</a>
+                                </div>
+
+                            </div>
+                            {{ end }}
+
+                        </div>
+
+                    </div>
+                    <div class="col-md-10 ">
+                        <div class="mt-4 text-center">
+
+
+
+
+                            <small>Reference ID: {{.Request.ID}}</small><br />
+                            {{ if eq .Request.Status "COMPLETED" }}
+                            <small>Please close the browser and continue with your conversation.</small>
+                            {{ end }}
+                            {{ if .Request.Permalink }}
+                            <br /><a href="{{ .Request.Permalink }}">Open Message In Slack</a>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+
+    </div>
+</div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var flowStatusElement = document.getElementById('flowStatus');
+        var status = flowStatusElement.getAttribute('data-status');
+        switch (status) {
+            case '':
+                document.querySelector('.progressbar li:nth-child(1)').classList.add('active');
+                break;
+            case 'SENT':
+                document.getElementById('initiatedStep').classList.add('text-success');
+                document.getElementById('sentStep').classList.add('text-success');
+                break;
+            case 'FAILED' || 'REQUEST_FAILED_INVALID_EMAIL':
+                document.getElementById('initiatedStep').classList.add('text-success');
+                document.getElementById('sentStep').classList.add('text-success');
+                document.getElementById('verifiedStep').classList.add('text-danger');
+                // document.getElementById('verifiedStep').getElementsByTagName("p")[0].innerHTML = "Failed";
+                // bi-exclamation-triangle-fill
+
+
+                break;
+            case 'COMPLETED':
+                document.getElementById('initiatedStep').classList.add('text-success');
+                document.getElementById('sentStep').classList.add('text-success');
+                document.getElementById('verifiedStep').classList.add('text-success');
+                document.getElementById('completedStep').classList.add('text-success');
+                break;
+            default:
+                break;
+        }
+    });
+
+
+</script>
+{{template "footer" .}}

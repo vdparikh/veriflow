@@ -1,0 +1,10 @@
+bin
+bin/bootstrap
+bin/templates/*.html
+config-p5tech.yaml
+config-site.yaml
+config_site_2.yml
+
+*.json
+docs/.DS_Store
+.DS_Store

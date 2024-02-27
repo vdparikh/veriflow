@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+
+  myapp:
+    build: .
+    environment:
+      LOCAL: true
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+    volumes:
+      - .:/go/src/app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - dynamodb-local
+

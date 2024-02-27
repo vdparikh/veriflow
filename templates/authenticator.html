@@ -1,0 +1,275 @@
+{{template "header" .}}
+
+<div class=" d-flex align-items-center justify-content-center min-vh-100">
+
+    <div class=" container">
+
+
+
+
+        <div class="row justify-content-md-center mt-3">
+
+
+            <div class="col-md-4">
+
+                <div class="row">
+
+
+
+                    <div class="col-md-12">
+                        <div class="bg-white mb-2 rounded-3 shadow-sm p-0 pt-3">
+
+                            <div class="ps-4 pe-4 mb-3 mt-3">
+                                <h1>Verify it’s you</h1>
+                                <p>Hello <b>{{ .Request.Recipient.Name}}</b>, Please provide your 2FA to finish
+                                    verification request
+                                    initiated by <b>{{ .Request.Requestor.Name}}</b></p>
+                            </div>
+
+                            <div class="col-md-12">
+                                {{if .Error}}
+                                <div class="text-danger ps-4 pe-4 mt-1 mb-3">{{.Error}}</div>
+                                {{end}}
+
+                                <div id="success-block" class=" alert d-none alert-success"></div>
+                                <div id="error-block" class=" alert d-none alert-danger"></div>
+                            </div>
+
+
+                            
+                            {{ $length := len .User.Credentials }}
+                            {{ if and (eq $length 0) (eq .User.Authenticator.Validated false) }}
+                            <div class="border-top ps-4 pe-4 pt-3 pb-3">
+                                <b class="text-danger">No 2FA Options Available</b><br />
+                                <p>Veriflow is configured to use 2FA but it seems like you do not have that configured
+                                    yet. Click on the link below to set that up before you can verify the request.</p>
+                                <a href="/user/configure" class="mt-2 btn btn-primary btn-sm">Configure 2FA</a>
+                            </div>
+                            {{ end }}
+
+                            {{ if .User.Credentials }}
+
+                            <div class="border-top ps-4 pe-4 pt-3 pb-3">
+
+                                <div class="hstack gap-3">
+                                    <i class="bi bi-phone"></i>
+                                    <div class="">
+                                        <b>WebAuthN</b><br />
+                                        <p>Sign in via WebAuthN</p>
+                                    </div>
+                                    <div class="ms-auto"><button class=" btn btn-sm btn-success"
+                                            id="login">Login</button></div>
+                                </div>
+
+
+
+                            </div>
+
+                            {{ end }}
+
+                            {{ if .User.Authenticator.Validated }}
+                            <div class="border-top ps-4 pe-4 pt-3 pb-3">
+
+                                <div class="hstack gap-3">
+                                    <i class="bi bi-123"></i>
+                                    <div class="">
+                                        <b>Authenticator App</b><br />
+                                        <p>Open your Google or MS Authenticator app and provide the code here to
+                                            complete your
+                                            verification.</p>
+                                        <form class="mt-2" action="/requests/{{.UUID}}/verify-code" method="post">
+                                            <input type="hidden" name="uuid" value="{{.UUID}}">
+                                            <div class="input-group">
+                                                <input class="form-control" type="text" id="code" name="code" required>
+                                                <button class="btn btn-primary btn-sm" type="submit">Verify</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            {{ end }}
+
+
+                        </div>
+                    </div>
+
+
+                </div>
+
+
+
+            </div>
+
+        </div>
+
+
+
+
+
+
+
+    </div>
+
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function base64UrlToBuffer(base64Url) {
+            const padding = "==".slice(0, (4 - base64Url.length % 4) % 4);
+            const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/") + padding;
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray.buffer;
+        }
+
+        function bufferToBase64Url(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function loginWithWebAuthn() {
+            const userID = "{{ .User.ID }}";
+            const uuid = "{{ .UUID }}";
+            const beginLoginUrl = `/api/begin-login/${encodeURIComponent(uuid)}`;
+
+            fetch(beginLoginUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    data.publicKey.challenge = base64UrlToBuffer(data.publicKey.challenge);
+                    if (data.publicKey.allowCredentials) {
+                        data.publicKey.allowCredentials.forEach(cred => {
+                            cred.id = base64UrlToBuffer(cred.id);
+                        });
+                    }
+                    return navigator.credentials.get({ publicKey: data.publicKey });
+                })
+                .then(assertion => {
+                    const authData = {
+                        id: assertion.id,
+                        rawId: bufferToBase64Url(assertion.rawId),
+                        type: assertion.type,
+                        response: {
+                            authenticatorData: bufferToBase64Url(assertion.response.authenticatorData),
+                            clientDataJSON: bufferToBase64Url(assertion.response.clientDataJSON),
+                            signature: bufferToBase64Url(assertion.response.signature),
+                            userHandle: bufferToBase64Url(assertion.response.userHandle),
+                        }
+                    };
+                    const finishLoginUrl = `/api/finish-login/${encodeURIComponent(uuid)}`;
+                    return fetch(finishLoginUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(authData)
+                    });
+                })
+                .then(response => response.json())
+                .then(finalData => {
+                    console.log("Login successful:", finalData);
+                    window.location.href = `/requests/${encodeURIComponent(uuid)}`;
+                })
+                .catch(error => {
+                    console.error("WebAuthn error:", error);
+                });
+        }
+
+        document.getElementById('login').addEventListener('click', loginWithWebAuthn);
+    });
+</script>
+
+
+<!-- <script>
+    function base64UrlToBuffer(base64Url) {
+        let padding = "==".slice(0, (4 - base64Url.length % 4) % 4);
+        let base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/") + padding;
+        let rawData = window.atob(base64);
+        let outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray.buffer;
+    }
+
+    function bufferToBase64Url(buffer) {
+        let binary = '';
+        let bytes = new Uint8Array(buffer);
+        let len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    document.getElementById('login').addEventListener('click', function () {
+        var user = "{{ .User.ID }}";
+        var uuid = "{{ .UUID }}";
+
+        var url = '/api/begin-login/' + encodeURIComponent(uuid) ;
+
+        fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+        })
+            .then(response => response.json())
+            .then(data => {
+                // Convert the challenge from base64url to ArrayBuffer
+                data.publicKey.challenge = base64UrlToBuffer(data.publicKey.challenge);
+                if (data.publicKey.allowCredentials) {
+                    for (let i = 0; i < data.publicKey.allowCredentials.length; i++) {
+                        data.publicKey.allowCredentials[i].id = base64UrlToBuffer(data.publicKey.allowCredentials[i].id);
+                    }
+                }
+
+                return navigator.credentials.get({ publicKey: data.publicKey });
+            })
+            .then(assertion => {
+                // Prepare the assertion response to be sent to the server
+                let authData = {
+                    id: assertion.id,
+                    rawId: bufferToBase64Url(assertion.rawId),
+                    type: assertion.type,
+                    response: {
+                        authenticatorData: bufferToBase64Url(assertion.response.authenticatorData),
+                        clientDataJSON: bufferToBase64Url(assertion.response.clientDataJSON),
+                        signature: bufferToBase64Url(assertion.response.signature),
+                        userHandle: bufferToBase64Url(assertion.response.userHandle),
+                    }
+                };
+
+                var url = '/api/finish-login/' + encodeURIComponent(uuid) ;
+                return fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(authData)
+                });
+            })
+            .then(response => response.json())
+            .then(finalData => {
+                console.log(finalData);
+                window.location.href = "/requests/" + encodeURIComponent(uuid);
+                // Handle success or failure
+            })
+            .catch(error => {
+                console.error(error);
+                // Handle error
+            });
+    });
+</script> -->
+{{template "footer" .}}

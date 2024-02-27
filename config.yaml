@@ -1,0 +1,42 @@
+base_url: "https://xxxxx.ngrok-free.app" # no trailing slash
+
+communication:
+  active_service: "slack" # Options: "slack", "ms_teams"
+
+  services:
+    slack:
+      app_token: "xapp-1-"
+      bot_token: "xoxb-"
+    ms_teams:
+      webhook_url: "https://outlook.office.com/webhook/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+email:
+  enabled: true
+  from: "vdparikh@gmail.com"
+  smtp_server: "smtp.gmail.com"
+  port: 587
+  username: "vdparikh@gmail.com"
+  password: "bpnr"
+
+auth:
+  provider: "oidc"
+  client_id: "xxxxx.apps.googleusercontent.com"
+  client_secret: "xxxxxx"
+  issuer: "https://accounts.google.com"
+  callback_url: "auth/callback"
+
+authenticator:
+  enabled: true
+
+report:
+  url: "report"
+
+
+messages:
+  verification_message: "*Hello %s*, You initiated communication with *%s* and they have requested you to verify yourself. Please click the link below to verify and establish secure communication. If you have not initiated the call, please click the report button."
+  request_confirmation_message: "*Hello %s*, Your verification request for *%s* was recieved at %s. You will be notified when the verification is completed. Please avoid sharing any sensitive information until the request is completed"
+  requestor_completion_message: "*Hello %s*, Your verification request for *%s* completed at %s. "
+  recipient_completion_message: "*Hello %s*, You successfully completed Verification initiated by *%s* at %s. "
+  recipient_verification_failure_message: "*Hello %s*, A verification request initiated by *%s* failed at %s.\nError: `%s`"
+  requestor_verification_failure_message: "*Hello %s*, Verification for *%s* failed at %s.\nError: `%s`"
+

@@ -1,0 +1,168 @@
+{{template "header" .}}
+
+<style>
+
+
+</style>
+<div class=" d-flex align-items-center justify-content-center min-vh-100">
+
+    <div class="container ">
+
+
+        <div class="row justify-content-md-center mt-3">
+
+            <div class="col-md-3 p-3">
+
+
+                <h1>Veriflow</h1>
+                <p>Secure Human-2-Human auth for out of band communications </p>
+                
+
+            </div>
+
+            <div class="col-md-6 ">
+                <div class="bg-white mb-2 rounded-3 shadow-sm p-5">
+
+                    <div class="col-md-12">
+                        {{if .Error}}
+                        <div class="text-danger ps-4 pe-4 mt-1 mb-3">{{.Error}}</div>
+                        {{end}}
+
+                        <div id="success-block" class=" alert d-none alert-success">asdfasd</div>
+                        <div id="error-block" class=" alert d-none alert-danger"></div>
+                    </div>
+
+                {{ if eq .Config.Communication.ActiveService "email" }}
+
+                <h4>New Verification Request</h4>
+                <p>Active veriflow service is "email". Please provide an email address for the user you want to verify. You will get an email on completion of their verification.</p>
+                <form id="veriflowForm" class="mt-3">
+                    <div class="form-floating mb-1">
+                        <input class="form-control" type="email" id="email" name="email" required>
+                        <label class="form-label" for="email">Email:</label>
+                    </div>
+
+
+                    <button class="btn btn-success w-100" type="submit">Verify Email</button>
+                </form>
+                {{end }}
+            </div>
+        </div>
+
+            </div>
+        </div>
+            <!-- <div class="col-md-6 ">
+
+                <div class="row">
+                    <div class="col-md-6 ">
+                        <div class="bg-white  rounded-3 shadow-sm p-5">
+                            <a href="/requests">My Requests</a>
+                        </div>
+
+                    </div>
+                    <div class="col-md-6 ">
+                        <div class="bg-white  rounded-3 shadow-sm p-5">
+                            <a href="/user/configure">Configure</a>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-12 ">
+                        <div class=" bg-white  rounded-3 shadow-sm p-5">
+                            <form id="veriflowForm">
+                                <div class="form-floating mb-1">
+                                    <input class="form-control" type="email" id="email" name="email" required>
+                                    <label class="form-label" for="email">Email:</label>
+                                </div>
+
+
+                                <button class="btn btn-success w-100" type="submit">Verify Email</button>
+                            </form>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div> -->
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+                const successBlock = document.getElementById('success-block');
+                const errorBlock = document.getElementById('error-block'); // Assuming you have this element for displaying errors
+
+            
+                function showSuccess(message) {
+                    successBlock.textContent = message;
+                    successBlock.classList.remove('d-none');
+                }
+
+                function showError(error) {
+                    errorBlock.textContent = error;
+                    errorBlock.classList.remove('d-none');
+                }
+            
+
+        document.getElementById('veriflowForm').onsubmit = function (event) {
+            event.preventDefault();
+
+            const email = document.getElementById('email').value;
+
+            fetch('/api/veriflow', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ recipient_id: email }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Success:', data);
+                    showSuccess('Verification initiated successfully.');
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    showError('Error initiating verification.');
+                });
+        };
+
+        var flowStatusElement = document.getElementById('flowStatus');
+        var status = flowStatusElement.getAttribute('data-status');
+
+        // Depending on the status, update the flow diagram
+        switch (status) {
+            case '':
+                // Update diagram to show the "Sent" state
+                document.querySelector('.progressbar li:nth-child(1)').classList.add('active');
+                break;
+            case 'SENT':
+                // Update diagram to show the "Sent" state
+                document.getElementById('initiatedStep').classList.add('bg-success');
+                document.getElementById('sentStep').classList.add('bg-success');
+                // document.querySelector('.progressbar li:nth-child(2)').classList.add('active');
+                break;
+            case 'FAILED' || 'REQUEST_FAILED_INVALID_EMAIL':
+                document.getElementById('initiatedStep').classList.add('text-success');
+                document.getElementById('sentStep').classList.add('text-success');
+                document.getElementById('verifiedStep').classList.add('text-danger');
+                break;
+            case 'COMPLETED':
+                // Update diagram to show the "Completed" state
+                document.getElementById('initiatedStep').classList.add('text-success');
+                document.getElementById('sentStep').classList.add('text-success');
+                document.getElementById('verifiedStep').classList.add('text-success');
+                document.getElementById('completedStep').classList.add('text-success');
+                break;
+            default:
+                // Handle any other case or show an error/default state
+                break;
+        }
+    });
+</script>
+{{template "footer" .}}

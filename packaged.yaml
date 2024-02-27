@@ -1,0 +1,214 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  VeriflowBucket:
+    Type: String
+    Description: The S3 bucket for Veriflow
+Resources:
+  VeriflowFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: VeriflowRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonS3FullAccess
+      - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+      - arn:aws:iam::aws:policy/AmazonSESFullAccess
+      - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+    Metadata:
+      SamResourceId: VeriflowFunctionRole
+  GinLambdaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+      SamResourceId: GinLambdaFunction
+    Properties:
+      Handler: bootstrap
+      Runtime: provided.al2
+      CodeUri: s3://veriflow/f7a49be0ec501b96c770ffd3a9e3b40e
+      MemorySize: 128
+      Timeout: 100
+      Role:
+        Fn::GetAtt:
+        - VeriflowFunctionRole
+        - Arn
+      Environment:
+        Variables:
+          jwt_key: JWT_KEY
+          VERIFLOW_BUCKET:
+            Ref: VeriflowBucket
+    Events:
+      GinApi:
+        Type: Api
+        Properties:
+          RestApiId:
+            Ref: VeriflowApi
+          Path: /{proxy+}
+          Method: any
+  VeriflowApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: VeriflowApi
+      StageName: prod
+      Cors:
+        AllowMethods: '''DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT'''
+        AllowHeaders: '''X-Forwarded-For,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+        AllowOrigin: '''*'''
+        MaxAge: '''600'''
+      DefinitionBody:
+        swagger: '2.0'
+        info:
+          title: VeriflowApi
+        paths:
+          /{proxy+}:
+            x-amazon-apigateway-any-method:
+              produces:
+              - application/json
+              responses: {}
+              x-amazon-apigateway-integration:
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GinLambdaFunction.Arn}/invocations
+                httpMethod: POST
+                type: aws_proxy
+    Metadata:
+      SamResourceId: VeriflowApi
+  LambdaApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - GinLambdaFunction
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${VeriflowApi}/*/*/*
+    Metadata:
+      SamResourceId: LambdaApiGatewayInvokePermission
+  VeriflowApiDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: CloudFront distribution for Veriflow API
+        DefaultRootObject: ''
+        Origins:
+        - Id: VeriflowApiOrigin
+          DomainName:
+            Fn::Sub: ${VeriflowApi}.execute-api.${AWS::Region}.amazonaws.com
+          OriginPath: /prod
+          CustomOriginConfig:
+            HTTPPort: 80
+            HTTPSPort: 443
+            OriginProtocolPolicy: https-only
+            OriginSSLProtocols:
+            - TLSv1.2
+        DefaultCacheBehavior:
+          TargetOriginId: VeriflowApiOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+          - GET
+          - HEAD
+          - OPTIONS
+          - PUT
+          - PATCH
+          - POST
+          - DELETE
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: all
+            Headers: []
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 0
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+    Metadata:
+      SamResourceId: VeriflowApiDistribution
+  VeriflowUsers:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VeriflowUsers
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      - AttributeName: email
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: EmailIndex
+        KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+    Metadata:
+      SamResourceId: VeriflowUsers
+  VeriflowRequests:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VeriflowRequests
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      - AttributeName: requestor_email
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: EmailIndex
+        KeySchema:
+        - AttributeName: requestor_email
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+    Metadata:
+      SamResourceId: VeriflowRequests
+  VeriflowWebAuthnSessions:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VeriflowWebAuthnSessions
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+    Metadata:
+      SamResourceId: VeriflowWebAuthnSessions
+Outputs:
+  CloudFrontDistributionURL:
+    Description: URL of the CloudFront distribution
+    Value:
+      Fn::GetAtt:
+      - VeriflowApiDistribution
+      - DomainName
+    Export:
+      Name: CloudFrontDistributionURL

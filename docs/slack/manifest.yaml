@@ -1,0 +1,31 @@
+display_information:
+  name: Veriflow
+  description: Securing Human to Human Auth
+  background_color: "#0f0f0f"
+features:
+  bot_user:
+    display_name: Veriflow
+    always_online: false
+  slash_commands:
+    - command: /veriflow
+      url: https://d1v0ea2l5vxec2.cloudfront.net/slack/veriflow
+      description: Veriflow
+      should_escape: true
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - commands
+      - files:write
+      - im:write
+      - incoming-webhook
+      - users:read
+      - users:read.email
+      - mpim:write
+settings:
+  interactivity:
+    is_enabled: true
+    request_url: https://d1v0ea2l5vxec2.cloudfront.net/health
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
